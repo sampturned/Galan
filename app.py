@@ -5,6 +5,7 @@ import requests
 import os
 import sqlite3
 import json
+import time
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'change-me')
@@ -50,13 +51,23 @@ def verify_telegram_auth(data: dict) -> bool:
     """Verify Telegram login using HMAC as described by Telegram."""
     if not TELEGRAM_BOT_TOKEN:
         return False
-    check_hash = data.pop("hash")
+    check_hash = data.pop("hash", None)
+    if not check_hash:
+        return False
     payload = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
     secret_key = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).digest()
     calculated_hash = hmac.new(
         secret_key, payload.encode(), hashlib.sha256
     ).hexdigest()
-    return hmac.compare_digest(calculated_hash, check_hash)
+    if not hmac.compare_digest(calculated_hash, check_hash):
+        return False
+    # Telegram recommends validating that the authorization is recent
+    try:
+        if time.time() - int(data.get("auth_date", 0)) > 86400:
+            return False
+    except ValueError:
+        return False
+    return True
 
 
 def save_user(data: dict) -> None:
@@ -123,7 +134,7 @@ def index():
 
 @app.route('/auth/telegram')
 def auth_telegram():
-    data = dict(request.args)
+    data = request.args.to_dict()
     if 'hash' not in data:
         return 'Отсутствует hash', 400
     if not TELEGRAM_BOT_TOKEN:
