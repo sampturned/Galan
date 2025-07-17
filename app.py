@@ -61,10 +61,12 @@ def verify_telegram_auth(data: dict) -> tuple[bool, str]:
     secret_key = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).digest()
     expected = hmac.new(secret_key, payload.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, check_hash):
+        token_hint = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).hexdigest()[:8]
         msg = (
             "Неверная подпись; "
             f"payload='{payload}', "
-            f"ожидалось='{expected}', получено='{check_hash}'"
+            f"ожидалось='{expected}', получено='{check_hash}', "
+            f"token_digest_prefix='{token_hint}'"
         )
         return False, msg
 
