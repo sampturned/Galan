@@ -23,6 +23,16 @@ def verify_telegram_auth(data: dict) -> bool:
     return calculated_hash == check_hash
 
 
+def get_proxy() -> dict | None:
+    """Return a proxies dict for requests if a proxy is configured."""
+    p = session.get('proxy')
+    if not p:
+        return None
+    auth = f"{p['username']}:{p['password']}@" if p['username'] and p['password'] else ''
+    url = f"http://{auth}{p['ip']}:{p['port']}"
+    return {'http': url, 'https': url}
+
+
 @app.route('/')
 def index():
     user = session.get('telegram_user')
@@ -36,12 +46,27 @@ def auth_telegram():
         return 'Отсутствует hash', 400
     if verify_telegram_auth(data.copy()):
         session['telegram_user'] = data
-        return redirect(url_for('playerok_login'))
+        return redirect(url_for('index'))
     return 'Некорректная авторизация в Telegram', 400
+
+
+@app.route('/proxy', methods=['GET', 'POST'])
+def add_proxy():
+    if request.method == 'POST':
+        session['proxy'] = {
+            'ip': request.form['ip'],
+            'port': request.form['port'],
+            'username': request.form.get('username', ''),
+            'password': request.form.get('password', '')
+        }
+        return redirect(url_for('playerok_login'))
+    return render_template('proxy.html')
 
 
 @app.route('/playerok', methods=['GET', 'POST'])
 def playerok_login():
+    if 'proxy' not in session:
+        return redirect(url_for('add_proxy'))
     if request.method == 'POST':
         email = request.form['email']
         success = request_playerok_code(email)
@@ -55,7 +80,9 @@ def playerok_login():
 def request_playerok_code(email: str) -> bool:
     query = 'query getEmailAuthCode($email: String!) { getEmailAuthCode(input: {email: $email}) }'
     variables = {'email': email}
-    resp = requests.post(PLAYEROK_ENDPOINT, json={'operationName': 'getEmailAuthCode', 'query': query, 'variables': variables})
+    resp = requests.post(PLAYEROK_ENDPOINT,
+                        json={'operationName': 'getEmailAuthCode', 'query': query, 'variables': variables},
+                        proxies=get_proxy())
     return resp.ok
 
 
@@ -67,6 +94,9 @@ def playerok_verify():
     if request.method == 'POST':
         code = request.form['code']
         session_obj = requests.Session()
+        proxy = get_proxy()
+        if proxy:
+            session_obj.proxies.update(proxy)
         if verify_playerok_code(session_obj, email, code):
             session['playerok_cookie'] = session_obj.cookies.get_dict()
             return redirect(url_for('index'))
@@ -77,7 +107,9 @@ def playerok_verify():
 def verify_playerok_code(sess: requests.Session, email: str, code: str) -> bool:
     query = 'query checkEmailAuthCode($input: CheckEmailAuthCodeInput!) { checkEmailAuthCode(input: $input) { __typename } }'
     variables = {'input': {'email': email, 'code': code}}
-    resp = sess.post(PLAYEROK_ENDPOINT, json={'operationName': 'checkEmailAuthCode', 'query': query, 'variables': variables})
+    resp = sess.post(PLAYEROK_ENDPOINT,
+                    json={'operationName': 'checkEmailAuthCode', 'query': query, 'variables': variables},
+                    proxies=get_proxy())
     return resp.ok and 'errors' not in resp.json()
 
 

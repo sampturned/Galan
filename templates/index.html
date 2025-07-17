@@ -7,7 +7,9 @@
 <body>
 {% if user %}
   <h2>Добро пожаловать, {{ user.first_name }}</h2>
-  {% if session.playerok_cookie %}
+  {% if not session.proxy %}
+    <a href="{{ url_for('add_proxy') }}">Добавить прокси</a>
+  {% elif session.playerok_cookie %}
     <p>Аккаунт Playerok добавлен.</p>
   {% else %}
     <a href="{{ url_for('playerok_login') }}">Добавить аккаунт Playerok</a>
