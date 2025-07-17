@@ -9,7 +9,8 @@ import json
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'change-me')
 
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
+# Trim spaces to avoid HMAC mismatch if the env var contains extra whitespace
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '').strip()
 
 PLAYEROK_ENDPOINT = 'https://playerok.com/graphql'
 
@@ -47,6 +48,8 @@ conn.commit()
 
 def verify_telegram_auth(data: dict) -> bool:
     """Verify Telegram login using HMAC as described by Telegram."""
+    if not TELEGRAM_BOT_TOKEN:
+        return False
     check_hash = data.pop("hash")
     payload = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
     secret_key = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).digest()
@@ -123,6 +126,8 @@ def auth_telegram():
     data = dict(request.args)
     if 'hash' not in data:
         return 'Отсутствует hash', 400
+    if not TELEGRAM_BOT_TOKEN:
+        return 'Не настроен TELEGRAM_BOT_TOKEN', 500
     if verify_telegram_auth(data.copy()):
         session['telegram_user'] = data
         save_user(data)
