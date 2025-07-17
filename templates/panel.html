@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Панель управления</title>
+</head>
+<body>
+  <h2>Панель управления</h2>
+  <h3>Аккаунты Playerok</h3>
+  <ul>
+  {% for acc in accounts %}
+    <li>{{ acc.email }} - <a href="#">Настроить</a></li>
+  {% else %}
+    <li>Нет добавленных аккаунтов.</li>
+  {% endfor %}
+  </ul>
+  <p><a href="{{ url_for('profile') }}">Назад в профиль</a></p>
+</body>
+</html>
