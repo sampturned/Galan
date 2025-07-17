@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Авторизация через Telegram</title>
+</head>
+<body>
+{% if user %}
+  <h2>Добро пожаловать, {{ user.first_name }}</h2>
+  <p><a href="{{ url_for('profile') }}">Профиль</a></p>
+  {% if not has_proxy %}
+    <a href="{{ url_for('add_proxy') }}">Добавить прокси</a>
+  {% elif has_playerok %}
+    <p>Аккаунты Playerok добавлены.</p>
+  {% else %}
+    <a href="{{ url_for('playerok_login') }}">Добавить аккаунт Playerok</a>
+  {% endif %}
+{% else %}
+  <script async src="https://telegram.org/js/telegram-widget.js?15"
+          data-telegram-login="{{ telegram_bot }}"
+          data-size="large"
+          data-userpic="false"
+          data-request-access="write"
+          data-auth-url="{{ url_for('auth_telegram', _external=True) }}">
+  </script>
+{% endif %}
+</body>
+</html>
