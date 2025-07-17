@@ -224,5 +224,18 @@ def profile():
     return render_template('profile.html', user=user, accounts=accounts)
 
 
+@app.route('/panel')
+def control_panel():
+    user = session.get('telegram_user')
+    if not user:
+        return redirect(url_for('index'))
+    cur = conn.execute(
+        'SELECT id, email FROM playerok_accounts WHERE telegram_id = ?',
+        (user.get('id'),),
+    )
+    accounts = [{'id': row[0], 'email': row[1]} for row in cur.fetchall()]
+    return render_template('panel.html', accounts=accounts)
+
+
 if __name__ == '__main__':
     app.run(debug=True)
