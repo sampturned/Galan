@@ -48,24 +48,27 @@ conn.commit()
 
 
 def verify_telegram_auth(data: dict) -> bool:
-    """Verify Telegram login using HMAC as described by Telegram."""
+    """Validate Telegram login data using the official HMAC algorithm."""
     if not TELEGRAM_BOT_TOKEN:
         return False
-    check_hash = data.pop("hash", None)
+
+    check_hash = data.get("hash")
     if not check_hash:
         return False
-    payload = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
+
+    auth_data = {k: v for k, v in data.items() if k != "hash"}
+    payload = "\n".join(f"{k}={auth_data[k]}" for k in sorted(auth_data))
     secret_key = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).digest()
-    calculated_hash = hmac.new(
-        secret_key, payload.encode(), hashlib.sha256
-    ).hexdigest()
-    if not hmac.compare_digest(calculated_hash, check_hash):
+    digest = hmac.new(secret_key, payload.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(digest, check_hash):
         return False
-    # Telegram recommends validating that the authorization is recent
+
     try:
-        if time.time() - int(data.get("auth_date", 0)) > 86400:
-            return False
-    except ValueError:
+        auth_time = int(data.get("auth_date", 0))
+    except (TypeError, ValueError):
+        return False
+
+    if abs(time.time() - auth_time) > 86400:
         return False
     return True
 
