@@ -8,10 +8,10 @@ import json
 import time
 
 app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET', 'change-me')
+app.secret_key = os.getenv('FLASK_SECRET', '2cvewf2fWQfw34fef4')
 
 # Trim spaces to avoid HMAC mismatch if the env var contains extra whitespace
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '').strip()
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '7654287365:AAFh0tzxRwV0Ciy9aw9627fFRk3sqdXFM34').strip()
 
 PLAYEROK_ENDPOINT = 'https://playerok.com/graphql'
 
@@ -129,7 +129,7 @@ def index():
     return render_template(
         'index.html',
         user=user,
-        telegram_bot=os.getenv('TELEGRAM_BOT_USERNAME', ''),
+        telegram_bot=os.getenv('TELEGRAM_BOT_USERNAME', 'plrkhelper_bot'),
         has_proxy=has_proxy,
         has_playerok=has_playerok,
     )
