@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, session, url_for
 import hashlib
+import hmac
 import requests
 import os
 import sqlite3
@@ -45,15 +46,14 @@ conn.commit()
 
 
 def verify_telegram_auth(data: dict) -> bool:
-    """Verify Telegram login using the hash and bot token."""
-    check_hash = data.pop('hash')
-    payload = '\n'.join([f'{k}={v}' for k, v in sorted(data.items())])
+    """Verify Telegram login using HMAC as described by Telegram."""
+    check_hash = data.pop("hash")
+    payload = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
     secret_key = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).digest()
-    h = hashlib.sha256()
-    h.update(payload.encode())
-    h.update(secret_key)
-    calculated_hash = h.hexdigest()
-    return calculated_hash == check_hash
+    calculated_hash = hmac.new(
+        secret_key, payload.encode(), hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(calculated_hash, check_hash)
 
 
 def save_user(data: dict) -> None:
