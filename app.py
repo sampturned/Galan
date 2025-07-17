@@ -47,30 +47,31 @@ conn.execute(
 conn.commit()
 
 
-def verify_telegram_auth(data: dict) -> bool:
+def verify_telegram_auth(data: dict) -> tuple[bool, str]:
     """Validate Telegram login data using the official HMAC algorithm."""
     if not TELEGRAM_BOT_TOKEN:
-        return False
+        return False, "Не настроен TELEGRAM_BOT_TOKEN"
 
     check_hash = data.get("hash")
     if not check_hash:
-        return False
+        return False, "Отсутствует hash"
 
     auth_data = {k: v for k, v in data.items() if k != "hash"}
     payload = "\n".join(f"{k}={auth_data[k]}" for k in sorted(auth_data))
     secret_key = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).digest()
     digest = hmac.new(secret_key, payload.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(digest, check_hash):
-        return False
+        return False, "Неверная подпись"
 
     try:
         auth_time = int(data.get("auth_date", 0))
     except (TypeError, ValueError):
-        return False
+        return False, "Некорректная дата"
 
     if abs(time.time() - auth_time) > 86400:
-        return False
-    return True
+        return False, "Просроченная авторизация"
+
+    return True, ""
 
 
 def save_user(data: dict) -> None:
@@ -138,15 +139,12 @@ def index():
 @app.route('/auth/telegram')
 def auth_telegram():
     data = request.args.to_dict()
-    if 'hash' not in data:
-        return 'Отсутствует hash', 400
-    if not TELEGRAM_BOT_TOKEN:
-        return 'Не настроен TELEGRAM_BOT_TOKEN', 500
-    if verify_telegram_auth(data.copy()):
+    ok, reason = verify_telegram_auth(data.copy())
+    if ok:
         session['telegram_user'] = data
         save_user(data)
         return redirect(url_for('index'))
-    return 'Некорректная авторизация в Telegram', 400
+    return f'Некорректная авторизация в Telegram: {reason}', 400
 
 
 @app.route('/proxy', methods=['GET', 'POST'])
